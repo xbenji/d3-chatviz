@@ -1,0 +1,82 @@
+
+var width = 960,
+    height = 152,
+    cellSize = 17; // cell size
+
+var day = d3.time.format("%w"),
+    week = d3.time.format("%U"),
+    month_name = d3.time.format("%B"),
+    percent = d3.format(".1%"),
+    format = d3.time.format("%Y-%m-%d");
+
+var color = d3.scale.linear()
+    .domain([0, 1800])
+    .range(["#f9f9f9", "blue"]);
+
+var svg = d3.select("body").selectAll("svg")
+    .data(d3.range(2012, 2014))
+  .enter().append("svg")
+    .attr("width", width)
+    .attr("height", height)
+  .append("g")
+    .attr("transform", "translate(" + ((width - cellSize * 53) / 2) + "," + (height - cellSize * 7 - 1) + ")");
+
+svg.append("text")
+    .attr("transform", "translate(-6," + cellSize * 3.5 + ")rotate(-90)")
+    .style("text-anchor", "middle")
+    .text(function(d) { return d; });
+
+var rect = svg.selectAll(".day")
+    .data(function(d) { return d3.time.days(new Date(d, 0, 1), new Date(d + 1, 0, 1)); })
+  .enter().append("rect")
+    .attr("class", "day")
+    .attr("width", cellSize)
+    .attr("height", cellSize)
+    .attr("x", function(d) { return week(d) * cellSize; })
+    .attr("y", function(d) { return day(d) * cellSize; })
+    .datum(format);
+
+rect.append("title")
+    .text(function(d) { return d; });
+
+// month path
+svg.selectAll(".month")
+    .data(function(d) { return d3.time.months(new Date(d, 0, 1), new Date(d + 1, 0, 1)); })
+  .enter().append("path")
+    .attr("class", "month")
+    .attr("d", monthPath);
+
+// month labels
+svg.selectAll("text.month")
+    .data(function(d) { return d3.time.months(new Date(d, 0, 1), new Date(d + 1, 0, 1)); })
+  .enter().append("text")
+    .attr("class", "monthlabel")
+    .attr("x", function(d) { return (week(d) * cellSize) + cellSize; })
+    .attr("y", -10)
+    .text(month_name);
+
+d3.csv("chats.csv", function(error, csv) {
+  var data = d3.nest()
+    .key(function(d) { return d.Date; })
+    .rollup(function(d) { return d[0].Count; })
+    .map(csv);
+
+  rect.filter(function(d) { return d in data; })
+      .style("fill", function(d) { return color(data[d]); })
+    .select("title")
+      .text(function(d) { return d + ": " + data[d] + " messages"; });
+});
+
+function monthPath(t0) {
+  var t1 = new Date(t0.getFullYear(), t0.getMonth() + 1, 0),
+      d0 = +day(t0), w0 = +week(t0),
+      d1 = +day(t1), w1 = +week(t1);
+  return "M" + (w0 + 1) * cellSize + "," + d0 * cellSize
+      + "H" + w0 * cellSize + "V" + 7 * cellSize
+      + "H" + w1 * cellSize + "V" + (d1 + 1) * cellSize
+      + "H" + (w1 + 1) * cellSize + "V" + 0
+      + "H" + (w0 + 1) * cellSize + "Z";
+}
+
+
+d3.select(self.frameElement).style("height", "2910px");
